@@ -1,0 +1,25 @@
+---
+language: java
+jdk: "oraclejdk8"
+
+before_install:
+  # Make sure everything's up to date.
+  - sudo apt-get update -qq
+
+install:
+  - sudo apt-get install python-pip
+  # Install Ansible and pexpect.
+  - pip install ansible pexpect
+
+  # Add ansible.cfg to pick up roles path.
+  - "{ echo '[defaults]'; echo 'roles_path = ../'; } >> ansible.cfg"
+
+script:
+  - cat ansible.cfg
+  - ansible-playbook -i tests/inventory tests/test.yml --syntax-check
+  - ansible-playbook -i tests/inventory tests/test.yml --connection=local --become
+  - > 
+    keytool -list -v -keystore /tmp/testCA/keystore.jks -storepass unsecure
+    | grep -q 'testservice'
+    && (echo 'testservice certificate exists: pass' && exit 0)
+    || (echo 'testservice certificate exists: fail' && exit 1)
