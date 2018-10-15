@@ -24,27 +24,27 @@ The directory where the Certificate Authority should exist.
 Expiration time in days of the certificates.
 
 **common_name:** \
-**Default:** no \
+**Default:** no
 
 **country:** \
-**Default:** no \
+**Default:** no
 
 **state:** \
-**Default:** no \
+**Default:** no
 
 **locality:** \
-**Default:** no \
+**Default:** no
 
 **organization:** \
-**Default:** no \
+**Default:** no
 
 **organizational_unit:** \
-**Default:** no \
+**Default:** no
 
-**keystore_name: keystore.jks**
-**Default:** yes \
+**keystore_name: keystore.jks** \
+**Default:** yes
 
-**truststore_name: truststore.jks**
+**truststore_name: truststore.jks** \
 **Default:** yes
 
 **services:** \
