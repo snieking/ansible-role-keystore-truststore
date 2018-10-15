@@ -42,10 +42,10 @@ Expiration time in days of the certificates.
 **organizational_unit:** \
 **Default:** no
 
-**keystore_name: keystore.jks** \
+**keystore_name: keystore** \
 **Default:** yes
 
-**truststore_name: truststore.jks** \
+**truststore_name: truststore** \
 **Default:** yes
 
 **services:** \
