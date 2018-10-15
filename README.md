@@ -1,5 +1,6 @@
 Ansible Role: Keystore Truststore
 =========
+[![Build Status](https://travis-ci.org/snieking/ansible-role-keystore-truststore.svg?branch=master)](https://travis-ci.org/snieking/ansible-role-keystore-truststore)
 
 An Ansible Role for creating a keystore and truststore with self-signed certificates.
 
