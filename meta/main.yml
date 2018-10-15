@@ -1,0 +1,21 @@
+galaxy_info:
+  author: Viktor Plane
+  role_name: keystore-truststore
+  description: An Ansible Role for creating a keystore and truststore with self-signed certificates.
+  company: thecuriousdev.org
+
+  issue_tracker_url: https://github.com/snieking/ansible-role-keystore-truststore/issues
+
+  license: BSD, MIT
+
+  min_ansible_version: 2.6
+
+  galaxy_tags:
+    - keystore
+    - truststore
+    - certificate
+    - java
+    - keytool
+    - openssl
+
+dependencies: []

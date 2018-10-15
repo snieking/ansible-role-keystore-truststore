@@ -1,0 +1,8 @@
+---
+ca_path: /tmp/testCA
+certs_sleep_duration: 10
+expiration_days: 365
+common_name: test
+
+keystore_name: keystore.jks
+truststore_name: truststore.jks
