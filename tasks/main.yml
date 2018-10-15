@@ -60,3 +60,9 @@
   with_items:
     - rootCA.pem
     - baltimore.ca.cert
+
+- name: Convert from jks to pkcs12 store
+  shell: keytool -importkeystore -srckeystore {{ ca_path }}/{{ item }} -destkeystore {{ ca_path }}/{{ item }} -deststoretype pkcs12 -srcstorepass {{ keystore_password }} -deststorepass {{ keystore_password }}
+  with_items:
+    - "{{ keystore_name }}"
+    - "{{ truststore_name }}"
