@@ -69,7 +69,7 @@ The following playbook creates and signs certificates with our provided configur
       common_name: thecuriousdev.org
       country: SE
       state: Stockholm
-      locality: Gröndal
+      locality: Grondal
       organization: thecuriousdev
       organizational_unit: blog
       services:

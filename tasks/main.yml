@@ -47,7 +47,7 @@
   with_items: "{{ services }}"
 
 - name: Add to keystore
-  shell: keytool -importkeystore -destkeystore {{ ca_path }}/{{ keystore_name }}.jks -deststorepass {{ keystore_password }} -srckeystore {{ ca_path }}/{{ item.name }}.p12 -srcstoretype PKCS12 -srcstorepass {{ keystore_password }} & sleep 3
+  shell: keytool -importkeystore -destkeystore {{ ca_path }}/{{ keystore_name }} -deststorepass {{ keystore_password }} -srckeystore {{ ca_path }}/{{ item.name }}.p12 -srcstoretype PKCS12 -srcstorepass {{ keystore_password }} & sleep 3
   with_items: "{{ services }}"
 
 - name: Copy baltimore.ca.cert
