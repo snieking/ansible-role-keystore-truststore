@@ -8,7 +8,7 @@ before_install:
 
 install:
   - sudo apt-get install python-pip
-  - sudo pip install ansible pexpect
+  - sudo pip install ansible
 
   # Add ansible.cfg to pick up roles path.
   - "{ echo '[defaults]'; echo 'roles_path = ../'; } >> ansible.cfg"
