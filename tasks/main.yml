@@ -1,4 +1,7 @@
 ---
+- name: ensure pexists is installed
+  pip: { name: pexpect, state: present, extra_args: --user }
+
 - name: Clean up from previous run
   file: path={{ ca_path }} state=absent
 

@@ -11,7 +11,7 @@ A Java installation with JAVA_HOME configured is required on the host.
 
 OpenSSL is required on the host.
 
-Pip is required on the host as well as the python package pexists that can be installed with pip. See the example Playbook.
+Pip is required on the host. See the example Playbook.
 
 Role Variables
 --------------
@@ -63,8 +63,8 @@ The following playbook creates and signs certificates with our provided configur
     - name: "keystore_password"
       prompt: "Please provide a password for the keystore"
   pre_tasks:
-    - name: ensure pexists is installed
-      pip: { name: pexpect, state: present }
+    - name: ensure pip is installed
+      easy_install: { name: pip, state: latest, become: yes }
   roles:
     - role: snieking.keystore_truststore
       common_name: thecuriousdev.org
