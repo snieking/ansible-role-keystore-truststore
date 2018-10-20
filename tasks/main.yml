@@ -45,17 +45,27 @@
       "1 out of 1 certificate requests certified, commit?": "y"
   with_items: "{{ services }}"
 
-- name: Convert to pkcs12
-  shell: openssl pkcs12 -export -in {{ ca_path }}/{{ item.name }}.crt -inkey {{ ca_path }}/{{ item.name }}.key -out {{ ca_path }}/{{ item.name }}.p12 -name "{{ item.name }}" -passout pass:unsecure & sleep {{ certs_sleep_duration }}
+- name: ensure pem exists
+  file: path={{ ca_path }}/{{ item.name }}.pem state=touch
   with_items: "{{ services }}"
 
-- name: Add to keystore
-  shell: keytool -importkeystore -destkeystore {{ ca_path }}/{{ keystore_name }} -deststorepass {{ keystore_password }} -srckeystore {{ ca_path }}/{{ item.name }}.p12 -srcstoretype PKCS12 -srcstorepass {{ keystore_password }} & sleep 3
+- name: package key and crt
+  shell: cat {{ ca_path}}/{{ item.name }}.key >>  {{ ca_path }}/{{ item.name }}.pem & cat {{ ca_path }}/{{ item.name }}.crt >> {{ ca_path }}/{{ item.name }}.pem
   with_items: "{{ services }}"
 
-- name: Copy baltimore.ca.cert
+- name: ensure bundle.pem exists
+  file: path={{ ca_path }}/bundle.pem state=touch
+
+- name: create certificate bundle
+  shell: cat {{ ca_path }}/{{ item.name }}.pem >> {{ ca_path }}/bundle.pem
+  with_items: "{{ services }}"
+
+- name: create pkcs12 keystore
+  shell: openssl pkcs12 -export -in {{ ca_path }}/bundle.pem -out {{ ca_path }}/{{ keystore_name }}.p12 -name "{{ common_name }}" -passout pass:{{ keystore_password }}
+
+- name: copy baltimore.ca.cert
   copy:
-    src: certs/baltimore.ca.cert
+    src: trusted-certificates/crt/baltimore.ca.cert
     dest: "{{ ca_path }}/baltimore.ca.cert"
 
 - name: Import CA's to the truststore
@@ -65,7 +75,6 @@
     - baltimore.ca.cert
 
 - name: Convert from jks to pkcs12 store
-  shell: keytool -importkeystore -srckeystore {{ ca_path }}/{{ item }} -destkeystore {{ ca_path }}/{{ item }} -deststoretype pkcs12 -srcstorepass {{ keystore_password }} -deststorepass {{ keystore_password }}
+  shell: keytool -importkeystore -srckeystore {{ ca_path }}/{{ item }} -destkeystore {{ ca_path }}/{{ item }}.p12 -deststoretype pkcs12 -srcstorepass {{ keystore_password }} -deststorepass {{ keystore_password }}
   with_items:
-    - "{{ keystore_name }}"
     - "{{ truststore_name }}"

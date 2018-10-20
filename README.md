@@ -64,7 +64,8 @@ The following playbook creates and signs certificates with our provided configur
       prompt: "Please provide a password for the keystore"
   pre_tasks:
     - name: ensure pip is installed
-      easy_install: { name: pip, state: latest, become: yes }
+      easy_install: { name: pip, state: latest }
+      become: yes
   roles:
     - role: snieking.keystore_truststore
       common_name: thecuriousdev.org
