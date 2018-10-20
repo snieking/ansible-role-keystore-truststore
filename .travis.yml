@@ -26,9 +26,9 @@ script:
     || (echo 'testservice certificate exists: fail' && exit 1)
   - >
     keytool -list -v -keystore /tmp/testCA/keystore.p12 -storepass unsecure
-    | grep -q '1 entry'
-    && (echo 'assert 1 entry exists: pass' && exit 0)
-    || (echo 'assert 1 entry exists: fail' && exit 1)
+    | grep -q '2 entries'
+    && (echo 'assert 2 entries exists: pass' && exit 0)
+    || (echo 'assert 2 entries exists: fail' && exit 1)
   - >
     keytool -list -v -keystore /tmp/testCA/keystore.p12 -storepass unsecure
     | grep -q 'CN=testservice'
