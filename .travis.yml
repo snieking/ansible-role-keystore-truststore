@@ -88,7 +88,7 @@ script:
   # Truststore verifications
   - >
     keytool -list -v -keystore /tmp/testCA/truststore.p12 -storepass unsecure 
-    | grep -q 'rootCA'
+    | grep -q 'rootca'
     && (echo 'assert root CA is trusted: pass' && exit 0)
     || (echo 'assert root CA is trusted: fail' && exit 1)
   - >
