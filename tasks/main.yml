@@ -72,7 +72,7 @@
 - name: copy provided trusted certificate authorities directory
   copy:
     src: "{{ trusted_ca_path }}/"
-    dest: "{{ ca_path }}/trusted-ca/provided"
+    dest: "{{ ca_path }}/trusted-ca"
   when: trusted_ca_path is defined
 
 - name: check if {{ truststore_name }} exists
@@ -86,19 +86,12 @@
   with_fileglob: "{{ ca_path }}/trusted-ca/provided/*"
   when: not clean_up and stat_result.stat.exists == true
 
-- name: import root CA to the truststore
-  expect:
-    command: keytool -import -file {{ ca_path }}/trusted-ca/rootCA.pem -alias rootCA.pem -keystore {{ ca_path }}/{{ truststore_name }} -noprompt -v -storepass {{ keystore_password }}
-    responses:
-      "overwrite": "yes"
-
 - name: import provided trusted CA's to the truststore
   expect:
     command: keytool -import -file {{ item }} -alias {{ item | regex_replace('.*\/', '')}} -keystore {{ ca_path }}/{{ truststore_name }} -noprompt -v -storepass {{ keystore_password }}
     responses:
       "overwrite": "yes"
-  with_fileglob: "{{ ca_path }}/trusted-ca/provided/*"
-  when: trusted_ca_path is defined
+  with_fileglob: "{{ ca_path }}/trusted-ca/*"
 
 - name: convert from jks to pkcs12 store
   expect:
