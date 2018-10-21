@@ -1,2 +1,4 @@
 ---
-# vars file for ansible-role-keystore-truststore
+required_pip_libs:
+  - pexpect
+  - pyOpenSSL
