@@ -52,6 +52,10 @@ Expiration time in days of the certificates.
 **Default:** no \
 List of services. Each service has a name, and a list of alternative names. See playbook example below.
 
+**clean_up:** \
+**Default:** yes \
+If a clean up should be made before running. When a clean up occurrs, all the old certificates and keystores are removed.
+
 Example Playbook
 ----------------
 
@@ -68,6 +72,7 @@ The following playbook creates and signs certificates with our provided configur
       become: yes
   roles:
     - role: snieking.keystore_truststore
+      clean_up: no
       common_name: thecuriousdev.org
       country: SE
       state: Stockholm

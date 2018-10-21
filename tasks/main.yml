@@ -4,6 +4,7 @@
 
 - name: clean up from previous run
   file: path={{ ca_path }} state=absent
+  when: clean_up
 
 - name: ensure CA path exists - {{ ca_path }}
   file: path={{ ca_path }} state=directory
@@ -20,27 +21,35 @@
 
 - name: Ensure index.txt exists
   file: path={{ ca_path }}/index.txt state=touch
+  changed_when: "{{ clean_up }}"
 
-- name: Echo 1000 into serial
+- name: check if serial exists
+  stat:
+    path: "{{ ca_path }}/serial"
+  register: serial_stat_result
+
+- name: create serial
   shell: echo 1000\n > {{ ca_path }}/serial
+  when: serial_stat_result.stat.exists == false
 
-- name: Send root.cnf
+- name: send root.cnf
   template:
     src: root.cnf.j2
     dest: "{{ ca_path }}/root.cnf"
 
-- name: Create rootCA.key
+- name: create rootCA.key
   openssl_privatekey:
     path: "{{ ca_path }}/rootCA.key"
+    force: "{{ clean_up }}"
 
-- name: Create rootCA.pem
+- name: create rootCA.pem
   command: openssl req -x509 -new -nodes -key {{ ca_path }}/rootCA.key -extensions v3_ca -sha256 -days {{ expiration_days }} -out {{ ca_path }}/rootCA.pem -subj "/CN={{ common_name }}" -config {{ ca_path }}/root.cnf
 
-- name: Create certificates requests for all services
+- name: create certificates requests for all services
   command: openssl req -out {{ ca_path }}/{{ item.name }}/{{ item.name }}.csr -newkey rsa:{{ rsa_key_length }} -nodes -keyout {{ ca_path }}/{{ item.name }}/{{ item.name }}.key -config {{ ca_path }}/root.cnf -subj "/C={{ country }}/ST={{ state }}/L={{ locality }}/O={{ organization }}/OU={{ organizational_unit }}/CN={{ item.name }}" -extensions {{ item.name }}
   with_items: "{{ services }}"
 
-- name: Sign certificates
+- name: sign certificates
   expect:
     command: openssl ca -extensions {{ item.name }} -days {{ expiration_days }} -notext -md sha256 -in {{ ca_path }}/{{ item.name }}/{{ item.name }}.csr -out {{ ca_path }}/{{ item.name }}/{{ item.name }}.crt -cert {{ ca_path }}/rootCA.pem -keyfile {{ ca_path }}/rootCA.key -config {{ ca_path }}/root.cnf
     responses:
@@ -48,27 +57,49 @@
       "1 out of 1 certificate requests certified, commit?": "y"
   with_items: "{{ services }}"
 
-- name: Convert to pkcs12
+- name: convert to pkcs12
   command: openssl pkcs12 -export -in {{ ca_path }}/{{ item.name }}/{{ item.name }}.crt -inkey {{ ca_path }}/{{ item.name}}/{{ item.name }}.key -out {{ ca_path }}/{{ item.name }}/{{ item.name }}.p12 -name "{{ item.name }}" -passout pass:{{ keystore_password }}
   with_items: "{{ services }}"
 
-- name: Add to keystore
-  command: keytool -importkeystore -destkeystore {{ ca_path }}/{{ keystore_name }} -deststorepass {{ keystore_password }} -srckeystore {{ ca_path }}/{{ item.name }}/{{ item.name }}.p12 -srcstoretype PKCS12 -srcstorepass {{ keystore_password }}
+- name: add to keystore
+  expect:
+    command: keytool -importkeystore -destkeystore {{ ca_path }}/{{ keystore_name }} -deststorepass {{ keystore_password }} -srckeystore {{ ca_path }}/{{ item.name }}/{{ item.name }}.p12 -srcstoretype PKCS12 -srcstorepass {{ keystore_password }}
+    responses:
+      "overwrite": "yes"
   with_items: "{{ services }}"
 
-- name: Copy baltimore.ca.cert
+- name: copy baltimore.ca.cert
   copy:
     src: trusted-certificates/crt/baltimore.ca.cert
     dest: "{{ ca_path }}/baltimore.ca.cert"
 
-- name: Import CA's to the truststore
-  command: keytool -import -file {{ ca_path }}/{{ item }} -alias {{ item }} -keystore {{ ca_path }}/{{ truststore_name }} -noprompt -v -storepass {{ keystore_password }}
+- name: check if {{ truststore_name }} exists
+  stat:
+    path: "{{ ca_path }}/{{ truststore_name }}"
+  register: stat_result
+
+- name: remove trusted certificates that will be imported again
+  command: keytool -delete -keystore {{ ca_path }}/{{ truststore_name }} -alias '{{ item }}' -noprompt -storepass {{ keystore_password }}
+  ignore_errors: yes
+  with_items:
+    - rootCA.pem
+    - baltimore.ca.cert
+  when: not clean_up and stat_result.stat.exists == true
+
+- name: import CA's to the truststore
+  expect:
+    command: keytool -import -file {{ ca_path }}/{{ item }} -alias {{ item }} -keystore {{ ca_path }}/{{ truststore_name }} -noprompt -v -storepass {{ keystore_password }}
+    responses:
+      "overwrite": "yes"
   with_items:
     - rootCA.pem
     - baltimore.ca.cert
 
-- name: Convert from jks to pkcs12 store
-  shell: keytool -importkeystore -srckeystore {{ ca_path }}/{{ item }} -destkeystore {{ ca_path }}/{{ item }}.p12 -deststoretype pkcs12 -srcstorepass {{ keystore_password }} -deststorepass {{ keystore_password }}
+- name: convert from jks to pkcs12 store
+  expect:
+    command: keytool -importkeystore -srckeystore {{ ca_path }}/{{ item }} -destkeystore {{ ca_path }}/{{ item }}.p12 -deststoretype pkcs12 -srcstorepass {{ keystore_password }} -deststorepass {{ keystore_password }}
+    responses:
+      "overwrite": "yes"
   with_items:
     - "{{ keystore_name }}"
     - "{{ truststore_name }}"

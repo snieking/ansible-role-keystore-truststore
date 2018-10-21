@@ -6,3 +6,5 @@ common_name: test
 
 keystore_name: keystore
 truststore_name: truststore
+
+clean_up: yes
