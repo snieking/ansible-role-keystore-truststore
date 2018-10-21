@@ -20,6 +20,10 @@ Role Variables
 **Default:** yes \
 The directory where the Certificate Authority should exist.
 
+**trusted_ca_path:** \
+**Default:** no \
+Path of trusted certificate authorities (certification files) that should be imported to the truststore.
+
 **expiration_days: 365** \
 **Default:** yes \
 Expiration time in days of the certificates.
@@ -72,6 +76,7 @@ The following playbook creates and signs certificates with our provided configur
       become: yes
   roles:
     - role: snieking.keystore_truststore
+      trusted_ca_path: /my/trusted/ca-path/
       clean_up: no
       common_name: thecuriousdev.org
       country: SE

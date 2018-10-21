@@ -13,6 +13,7 @@
   file: path={{ ca_path }}/{{ item }} state=directory
   with_items:
     - newcerts
+    - trusted-ca
 
 - name: ensure service folders exists
   file: path={{ ca_path }}/{{ item.name }} state=directory
@@ -43,15 +44,15 @@
     force: "{{ clean_up }}"
 
 - name: create rootCA.pem
-  command: openssl req -x509 -new -nodes -key {{ ca_path }}/rootCA.key -extensions v3_ca -sha256 -days {{ expiration_days }} -out {{ ca_path }}/rootCA.pem -subj "/CN={{ common_name }}" -config {{ ca_path }}/root.cnf
+  command: openssl req -x509 -new -nodes -key {{ ca_path }}/rootCA.key -extensions v3_ca -sha256 -days {{ expiration_days }} -out {{ ca_path }}/trusted-ca/rootCA.pem -subj "/CN={{ common_name }}" -config {{ ca_path }}/root.cnf
 
-- name: create certificates requests for all services
+- name: create certificate requests for all services
   command: openssl req -out {{ ca_path }}/{{ item.name }}/{{ item.name }}.csr -newkey rsa:{{ rsa_key_length }} -nodes -keyout {{ ca_path }}/{{ item.name }}/{{ item.name }}.key -config {{ ca_path }}/root.cnf -subj "/C={{ country }}/ST={{ state }}/L={{ locality }}/O={{ organization }}/OU={{ organizational_unit }}/CN={{ item.name }}" -extensions {{ item.name }}
   with_items: "{{ services }}"
 
 - name: sign certificates
   expect:
-    command: openssl ca -extensions {{ item.name }} -days {{ expiration_days }} -notext -md sha256 -in {{ ca_path }}/{{ item.name }}/{{ item.name }}.csr -out {{ ca_path }}/{{ item.name }}/{{ item.name }}.crt -cert {{ ca_path }}/rootCA.pem -keyfile {{ ca_path }}/rootCA.key -config {{ ca_path }}/root.cnf
+    command: openssl ca -extensions {{ item.name }} -days {{ expiration_days }} -notext -md sha256 -in {{ ca_path }}/{{ item.name }}/{{ item.name }}.csr -out {{ ca_path }}/{{ item.name }}/{{ item.name }}.crt -cert {{ ca_path }}/trusted-ca/rootCA.pem -keyfile {{ ca_path }}/rootCA.key -config {{ ca_path }}/root.cnf
     responses:
       "Sign the certificate?": "y"
       "1 out of 1 certificate requests certified, commit?": "y"
@@ -68,10 +69,11 @@
       "overwrite": "yes"
   with_items: "{{ services }}"
 
-- name: copy baltimore.ca.cert
+- name: copy provided trusted certificate authorities directory
   copy:
-    src: trusted-certificates/crt/baltimore.ca.cert
-    dest: "{{ ca_path }}/baltimore.ca.cert"
+    src: "{{ trusted_ca_path }}/"
+    dest: "{{ ca_path }}/trusted-ca/provided"
+  when: trusted_ca_path is defined
 
 - name: check if {{ truststore_name }} exists
   stat:
@@ -81,19 +83,22 @@
 - name: remove trusted certificates that will be imported again
   command: keytool -delete -keystore {{ ca_path }}/{{ truststore_name }} -alias '{{ item }}' -noprompt -storepass {{ keystore_password }}
   ignore_errors: yes
-  with_items:
-    - rootCA.pem
-    - baltimore.ca.cert
+  with_fileglob: "{{ ca_path }}/trusted-ca/provded/*"
   when: not clean_up and stat_result.stat.exists == true
 
-- name: import CA's to the truststore
+- name: import root CA to the truststore
   expect:
-    command: keytool -import -file {{ ca_path }}/{{ item }} -alias {{ item }} -keystore {{ ca_path }}/{{ truststore_name }} -noprompt -v -storepass {{ keystore_password }}
+    command: keytool -import -file {{ ca_path }}/trusted-ca/rootCA.pem -alias rootCA.pem -keystore {{ ca_path }}/{{ truststore_name }} -noprompt -v -storepass {{ keystore_password }}
     responses:
       "overwrite": "yes"
-  with_items:
-    - rootCA.pem
-    - baltimore.ca.cert
+
+- name: import provided trusted CA's to the truststore
+  expect:
+    command: keytool -import -file {{ item }} -alias {{ item | regex_replace('.*\/', '')}} -keystore {{ ca_path }}/{{ truststore_name }} -noprompt -v -storepass {{ keystore_password }}
+    responses:
+      "overwrite": "yes"
+  with_fileglob: "{{ ca_path }}/trusted-ca/provided/*"
+  when: trusted_ca_path is defined
 
 - name: convert from jks to pkcs12 store
   expect:
