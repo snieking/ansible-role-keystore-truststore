@@ -2,3 +2,5 @@
 required_pip_libs:
   - pexpect
   - pyOpenSSL
+
+rsa_key_length: 4096

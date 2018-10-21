@@ -2,19 +2,21 @@
 - name: ensure {{ required_pip_libs | join(', ') }} is installed
   pip: { name: "{{ required_pip_libs }}", state: present, extra_args: --user }
 
-- name: Clean up from previous run
+- name: clean up from previous run
   file: path={{ ca_path }} state=absent
 
-- name: Ensure CA path exists - {{ ca_path }}
+- name: ensure CA path exists - {{ ca_path }}
   file: path={{ ca_path }} state=directory
 
-- name: Ensure required folders exists
+- name: ensure required folders exists
   file: path={{ ca_path }}/{{ item }} state=directory
   with_items:
-    - certs
-    - crl
     - newcerts
-    - private
+
+- name: ensure service folders exists
+  file: path={{ ca_path }}/{{ item.name }} state=directory
+  with_items:
+    - "{{ services }}"
 
 - name: Ensure index.txt exists
   file: path={{ ca_path }}/index.txt state=touch
@@ -32,26 +34,26 @@
     path: "{{ ca_path }}/rootCA.key"
 
 - name: Create rootCA.pem
-  shell: openssl req -x509 -new -nodes -key {{ ca_path }}/rootCA.key -extensions v3_ca -sha256 -days {{ expiration_days }} -out {{ ca_path }}/rootCA.pem -subj "/CN={{ common_name }}" -config {{ ca_path }}/root.cnf
+  command: openssl req -x509 -new -nodes -key {{ ca_path }}/rootCA.key -extensions v3_ca -sha256 -days {{ expiration_days }} -out {{ ca_path }}/rootCA.pem -subj "/CN={{ common_name }}" -config {{ ca_path }}/root.cnf
 
 - name: Create certificates requests for all services
-  shell: openssl req -out {{ ca_path }}/{{ item.name }}.csr -newkey rsa:2048 -nodes -keyout {{ ca_path }}/{{ item.name }}.key -config {{ ca_path }}/root.cnf -subj "/C={{ country }}/ST={{ state }}/L={{ locality }}/O={{ organization }}/OU={{ organizational_unit }}/CN={{ item.name }}" -extensions {{ item.name }} & sleep {{ certs_sleep_duration }}
+  command: openssl req -out {{ ca_path }}/{{ item.name }}/{{ item.name }}.csr -newkey rsa:{{ rsa_key_length }} -nodes -keyout {{ ca_path }}/{{ item.name }}/{{ item.name }}.key -config {{ ca_path }}/root.cnf -subj "/C={{ country }}/ST={{ state }}/L={{ locality }}/O={{ organization }}/OU={{ organizational_unit }}/CN={{ item.name }}" -extensions {{ item.name }}
   with_items: "{{ services }}"
 
 - name: Sign certificates
   expect:
-    command: openssl ca -extensions {{ item.name }} -days {{ expiration_days }} -notext -md sha256 -in {{ ca_path }}/{{ item.name }}.csr -out {{ ca_path }}/{{ item.name }}.crt -cert {{ ca_path }}/rootCA.pem -keyfile {{ ca_path }}/rootCA.key -config {{ ca_path }}/root.cnf
+    command: openssl ca -extensions {{ item.name }} -days {{ expiration_days }} -notext -md sha256 -in {{ ca_path }}/{{ item.name }}/{{ item.name }}.csr -out {{ ca_path }}/{{ item.name }}/{{ item.name }}.crt -cert {{ ca_path }}/rootCA.pem -keyfile {{ ca_path }}/rootCA.key -config {{ ca_path }}/root.cnf
     responses:
       "Sign the certificate?": "y"
       "1 out of 1 certificate requests certified, commit?": "y"
   with_items: "{{ services }}"
 
 - name: Convert to pkcs12
-  shell: openssl pkcs12 -export -in {{ ca_path }}/{{ item.name }}.crt -inkey {{ ca_path }}/{{ item.name }}.key -out {{ ca_path }}/{{ item.name }}.p12 -name "{{ item.name }}" -passout pass:unsecure & sleep {{ certs_sleep_duration }}
+  command: openssl pkcs12 -export -in {{ ca_path }}/{{ item.name }}/{{ item.name }}.crt -inkey {{ ca_path }}/{{ item.name}}/{{ item.name }}.key -out {{ ca_path }}/{{ item.name }}/{{ item.name }}.p12 -name "{{ item.name }}" -passout pass:{{ keystore_password }}
   with_items: "{{ services }}"
 
 - name: Add to keystore
-  shell: keytool -importkeystore -destkeystore {{ ca_path }}/{{ keystore_name }} -deststorepass {{ keystore_password }} -srckeystore {{ ca_path }}/{{ item.name }}.p12 -srcstoretype PKCS12 -srcstorepass {{ keystore_password }} & sleep 3
+  command: keytool -importkeystore -destkeystore {{ ca_path }}/{{ keystore_name }} -deststorepass {{ keystore_password }} -srckeystore {{ ca_path }}/{{ item.name }}/{{ item.name }}.p12 -srcstoretype PKCS12 -srcstorepass {{ keystore_password }}
   with_items: "{{ services }}"
 
 - name: Copy baltimore.ca.cert
@@ -60,7 +62,7 @@
     dest: "{{ ca_path }}/baltimore.ca.cert"
 
 - name: Import CA's to the truststore
-  shell: keytool -import -file {{ ca_path }}/{{ item }} -alias {{ item }} -keystore {{ ca_path }}/{{ truststore_name }} -noprompt -v -storepass {{ keystore_password }}
+  command: keytool -import -file {{ ca_path }}/{{ item }} -alias {{ item }} -keystore {{ ca_path }}/{{ truststore_name }} -noprompt -v -storepass {{ keystore_password }}
   with_items:
     - rootCA.pem
     - baltimore.ca.cert
