@@ -21,7 +21,7 @@
 
 - name: Ensure index.txt exists
   file: path={{ ca_path }}/index.txt state=touch
-  changed_when: "{{ clean_up }}"
+  changed_when: clean_up
 
 - name: check if serial exists
   stat:
