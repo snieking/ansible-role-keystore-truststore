@@ -81,7 +81,7 @@
   register: stat_result
 
 - name: remove trusted certificates that will be imported again
-  command: keytool -delete -keystore {{ ca_path }}/{{ truststore_name }} -alias '{{ item }}' -noprompt -storepass {{ keystore_password }}
+  command: keytool -delete -keystore {{ ca_path }}/{{ truststore_name }} -alias '{{ item | regex_replace('.*\/', '')}}' -noprompt -storepass {{ keystore_password }}
   ignore_errors: yes
   with_fileglob: "{{ ca_path }}/trusted-ca/*"
   when: not clean_up and stat_result.stat.exists == true
