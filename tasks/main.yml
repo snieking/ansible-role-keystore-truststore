@@ -46,25 +46,58 @@
 - name: create rootCA.pem
   command: openssl req -x509 -new -nodes -key {{ ca_path }}/rootCA.key -extensions v3_ca -sha256 -days {{ expiration_days }} -out {{ ca_path }}/trusted-ca/rootCA.pem -subj "/CN={{ common_name }}" -config {{ ca_path }}/root.cnf
 
+- name: send server.cnf
+  template:
+    src: server.cnf.j2
+    dest: "{{ ca_path }}/server.cnf"
+
 - name: create certificate requests for all services
-  command: openssl req -out {{ ca_path }}/{{ item.name }}/{{ item.name }}.csr -newkey rsa:{{ rsa_key_length }} -nodes -keyout {{ ca_path }}/{{ item.name }}/{{ item.name }}.key -config {{ ca_path }}/root.cnf -subj "/C={{ country }}/ST={{ state }}/L={{ locality }}/O={{ organization }}/OU={{ organizational_unit }}/CN={{ item.name }}" -extensions {{ item.name }}
+  command: openssl req -out {{ ca_path }}/{{ item.name }}/{{ item.name }}.server.csr -newkey rsa:{{ rsa_key_length }} -nodes -keyout {{ ca_path }}/{{ item.name }}/{{ item.name }}.server.key -config {{ ca_path }}/server.cnf -subj "/C={{ country }}/ST={{ state }}/L={{ locality }}/O={{ organization }}/OU={{ organizational_unit }}/CN={{ item.name }}" -extensions {{ item.name }}
   with_items: "{{ services }}"
 
 - name: sign certificates
   expect:
-    command: openssl ca -extensions {{ item.name }} -days {{ expiration_days }} -notext -md sha256 -in {{ ca_path }}/{{ item.name }}/{{ item.name }}.csr -out {{ ca_path }}/{{ item.name }}/{{ item.name }}.crt -cert {{ ca_path }}/trusted-ca/rootCA.pem -keyfile {{ ca_path }}/rootCA.key -config {{ ca_path }}/root.cnf
+    command: openssl ca -extensions {{ item.name }} -days {{ expiration_days }} -notext -md sha256 -in {{ ca_path }}/{{ item.name }}/{{ item.name }}.server.csr -out {{ ca_path }}/{{ item.name }}/{{ item.name }}.server.crt -cert {{ ca_path }}/trusted-ca/rootCA.pem -keyfile {{ ca_path }}/rootCA.key -config {{ ca_path }}/server.cnf
     responses:
       "Sign the certificate?": "y"
       "1 out of 1 certificate requests certified, commit?": "y"
   with_items: "{{ services }}"
 
 - name: convert to pkcs12
-  command: openssl pkcs12 -export -in {{ ca_path }}/{{ item.name }}/{{ item.name }}.crt -inkey {{ ca_path }}/{{ item.name}}/{{ item.name }}.key -out {{ ca_path }}/{{ item.name }}/{{ item.name }}.p12 -name "{{ item.name }}" -passout pass:{{ keystore_password }}
+  command: openssl pkcs12 -export -in {{ ca_path }}/{{ item.name }}/{{ item.name }}.server.crt -inkey {{ ca_path }}/{{ item.name}}/{{ item.name }}.server.key -out {{ ca_path }}/{{ item.name }}/{{ item.name }}.server.p12 -name "{{ item.name }}" -passout pass:{{ keystore_password }}
   with_items: "{{ services }}"
 
-- name: add to keystore
+- name: add server cert to server keystore
   expect:
-    command: keytool -importkeystore -destkeystore {{ ca_path }}/{{ keystore_name }} -deststorepass {{ keystore_password }} -srckeystore {{ ca_path }}/{{ item.name }}/{{ item.name }}.p12 -srcstoretype PKCS12 -srcstorepass {{ keystore_password }}
+    command: keytool -importkeystore -destkeystore {{ ca_path }}/{{ keystore_name }}.server -deststorepass {{ keystore_password }} -srckeystore {{ ca_path }}/{{ item.name }}/{{ item.name }}.server.p12 -srcstoretype PKCS12 -srcstorepass {{ keystore_password }}
+    responses:
+      "overwrite": "yes"
+  with_items: "{{ services }}"
+
+- name: send client.cnf
+  template:
+    src: client.cnf.j2
+    dest: "{{ ca_path }}/client.cnf"
+
+- name: create certificate requests for all services
+  command: openssl req -out {{ ca_path }}/{{ item.name }}/{{ item.name }}.client.csr -newkey rsa:{{ rsa_key_length }} -nodes -keyout {{ ca_path }}/{{ item.name }}/{{ item.name }}.client.key -config {{ ca_path }}/client.cnf -subj "/C={{ country }}/ST={{ state }}/L={{ locality }}/O={{ organization }}/OU={{ organizational_unit }}/CN={{ item.name }}" -extensions {{ item.name }}
+  with_items: "{{ services }}"
+
+- name: sign certificates
+  expect:
+    command: openssl ca -extensions {{ item.name }} -days {{ expiration_days }} -notext -md sha256 -in {{ ca_path }}/{{ item.name }}/{{ item.name }}.client.csr -out {{ ca_path }}/{{ item.name }}/{{ item.name }}.client.crt -cert {{ ca_path }}/trusted-ca/rootCA.pem -keyfile {{ ca_path }}/rootCA.key -config {{ ca_path }}/client.cnf
+    responses:
+      "Sign the certificate?": "y"
+      "1 out of 1 certificate requests certified, commit?": "y"
+  with_items: "{{ services }}"
+
+- name: convert to pkcs12
+  command: openssl pkcs12 -export -in {{ ca_path }}/{{ item.name }}/{{ item.name }}.client.crt -inkey {{ ca_path }}/{{ item.name}}/{{ item.name }}.client.key -out {{ ca_path }}/{{ item.name }}/{{ item.name }}.client.p12 -name "{{ item.name }}" -passout pass:{{ keystore_password }}
+  with_items: "{{ services }}"
+
+- name: add client cert to client keystore
+  expect:
+    command: keytool -importkeystore -destkeystore {{ ca_path }}/{{ keystore_name }}.client -deststorepass {{ keystore_password }} -srckeystore {{ ca_path }}/{{ item.name }}/{{ item.name }}.client.p12 -srcstoretype PKCS12 -srcstorepass {{ keystore_password }}
     responses:
       "overwrite": "yes"
   with_items: "{{ services }}"
@@ -99,5 +132,6 @@
     responses:
       "overwrite": "yes"
   with_items:
-    - "{{ keystore_name }}"
+    - "{{ keystore_name }}.server"
+    - "{{ keystore_name }}.client"
     - "{{ truststore_name }}"
