@@ -1,6 +1,6 @@
 ---
 language: java
-jdk: "oraclejdk8"
+jdk: "oraclejdk11"
 
 before_install:
   # Make sure everything's up to date.
