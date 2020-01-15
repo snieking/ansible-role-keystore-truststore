@@ -7,9 +7,9 @@ keytool -list -v -keystore /tmp/testCA/keystore.p12 -storepass unsecure \
 || (echo 'testservice certificate exists: fail' && exit 1)
 
 keytool -list -v -keystore /tmp/testCA/keystore.p12 -storepass unsecure \
-| grep -q '2 entries' \
-&& (echo 'assert 2 entries exists: pass' && exit 0) \
-|| (echo 'assert 2 entries exists: fail' && exit 1)
+| grep -q '1 entries' \
+&& (echo 'assert 1 entry exists: pass' && exit 0) \
+|| (echo 'assert 1 entry exists: fail' && exit 1)
 
 keytool -list -v -keystore /tmp/testCA/keystore.p12 -storepass unsecure \
 | grep -q 'CN=testservice' \
@@ -52,11 +52,6 @@ keytool -list -v -keystore /tmp/testCA/keystore.p12 -storepass unsecure \
 || (echo 'assert testservice SAN DNS is added: fail' && exit 1)
 
 keytool -list -v -keystore /tmp/testCA/keystore.p12 -storepass unsecure \
-| grep -q 'DNSName: testservice2' \
-&& (echo 'assert testservice2 SAN DNS is added: pass' && exit 0) \
-|| (echo 'assert testservice2 SAN DNS is added: fail' && exit 1)
-
-keytool -list -v -keystore /tmp/testCA/keystore.p12 -storepass unsecure \
 | grep -q 'DNSName: localhost' \
 && (echo 'assert localhost SAN DNS is added: pass' && exit 0) \
 || (echo 'assert localhost SAN DNS is added: fail' && exit 1)
@@ -83,7 +78,7 @@ ansible-playbook -i tests/inventory tests/test-no-clean-up.yml --connection=loca
 # Verification of re-run without clean up
 
 keytool -list -v -keystore /tmp/testCA/keystore.p12 -storepass unsecure \
-| grep -q 'DNSName: testservice3' \
+| grep -q 'DNSName: testservice2' \
 && (echo 'assert testservice2 SAN DNS is added: pass' && exit 0) \
 || (echo 'assert testservice2 SAN DNS is added: fail' && exit 1)
 
@@ -103,9 +98,9 @@ keytool -list -v -keystore /tmp/testCA/truststore.p12 -storepass unsecure \
 ansible-playbook -i tests/inventory tests/test-no-clean-up-other-path.yml --connection=local --become
 
 keytool -list -v -keystore /tmp/myCA/keystore.p12 -storepass unsecure \
-| grep -q '3 entries' \
-&& (echo 'assert 3 entries was added: pass' && exit 0) \
-|| (echo 'assert 3 entries was added: fail' && exit 1)
+| grep -q '1 entry' \
+&& (echo 'assert 1 entries was added: pass' && exit 0) \
+|| (echo 'assert 1 entries was added: fail' && exit 1)
 
 # Verification of truststore after re-write  
 

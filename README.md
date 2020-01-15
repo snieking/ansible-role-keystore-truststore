@@ -52,10 +52,6 @@ Expiration time in days of the certificates.
 **truststore_name: truststore** \
 **Default:** yes
 
-**services:** \
-**Default:** no \
-List of services. Each service has a name, and a list of alternative names. See playbook example below.
-
 **clean_up:** \
 **Default:** yes \
 If a clean up should be made before running. When a clean up occurrs, all the old certificates and keystores are removed.
@@ -80,16 +76,14 @@ The following playbook creates and signs certificates with our provided configur
       clean_up: no
       common_name: thecuriousdev.org
       country: SE
-      state: Stockholm
-      locality: Grondal
+      state: Stockholm Country
+      locality: Stockholm
       organization: thecuriousdev
       organizational_unit: blog
-      services:
-        - name: testservice
-          alt_names:
-            - "DNS.1  = testservice"
-            - "DNS.2  = localhost"
-            - "IP.1   = 127.0.0.1"
+      alt_names:
+        - "DNS.1  = testservice"
+        - "DNS.2  = localhost"
+        - "IP.1   = 127.0.0.1"
 ```
 
 License
